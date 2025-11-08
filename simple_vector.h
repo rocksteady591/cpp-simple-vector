@@ -260,7 +260,7 @@ public:
     }
 
     Iterator Insert(ConstIterator pos, const Type& value) {
-        assert(begin() <= pos || pos <= end());
+        assert(begin() <= pos && pos <= end());
         size_t pos_index = pos - begin();
         if (size_ == capacity_) {
             size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
@@ -281,7 +281,7 @@ public:
     }
 
     Iterator Insert(ConstIterator pos, Type&& value){
-        assert(begin() <= pos || pos <= end());
+        assert(begin() <= pos && pos <= end());
         size_t pos_index = pos - begin();
         if(size_ == capacity_){
             size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
@@ -302,7 +302,7 @@ public:
     }
 
     Iterator Erase(ConstIterator pos) {
-        assert(begin() <= pos || pos <= end());
+        assert(begin() <= pos && pos <= end());
         size_t pos_erase = pos - begin();
         std::move(items_ + pos_erase + 1, items_ + size_, items_ + pos_erase);
         --size_;
