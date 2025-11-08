@@ -4,6 +4,7 @@
 #include <initializer_list>
 #include <stdexcept>
 #include <utility>
+#include <memory>
 
 struct ReserveProxyObj {
     size_t capacity;
@@ -26,15 +27,11 @@ public:
         Reserve(reserve.capacity);
     }
 
-    SimpleVector(const SimpleVector& other) {
+    SimpleVector(const SimpleVector& other) : capacity_(other.capacity_), size_(other.size_) {
         capacity_ = other.capacity_;
         size_ = other.size_;
         items_ = new Type[size_];
-        Type copy_elem;
-        for (size_t i = 0; i < size_; ++i) {
-            copy_elem = other.items_[i];
-            items_[i] = copy_elem;
-        }
+        std::copy(other.begin(), other.end(), items_);
     }
     SimpleVector(SimpleVector&& other) : items_(other.items_), size_(other.size_), capacity_(other.capacity_){
         other.items_ = nullptr;
@@ -61,13 +58,7 @@ public:
     // Создаёт вектор из std::initializer_list
     SimpleVector(std::initializer_list<Type> init) {
         items_ = new Type[init.size()];
-        Type elem;
-        size_t i = 0;
-        for (const auto& val : init) {
-            elem = val;
-            items_[i] = elem;
-            ++i;
-        }
+        std::copy(init.begin(), init.end(), items_);
         size_ = init.size();
         capacity_ = size_;
     }
@@ -78,6 +69,12 @@ public:
 
     SimpleVector& operator=(const SimpleVector& other) {
     if (this != &other) {
+        if(other.IsEmpty()){
+            size_ = 0;
+            delete[] items_;
+            items_ = nullptr;
+            return *this;
+        }
         SimpleVector temp(other); 
         swap(temp); 
     }
@@ -88,13 +85,9 @@ public:
         if(this != &other){
             delete[] items_;
 
-            items_ = other.items_;
-            size_ = other.size_;
-            capacity_ = other.capacity_;
-
-            other.items_ = nullptr;
-            other.size_ = 0;
-            other.capacity_ = 0;
+            items_ = std::exchange(other.items_, nullptr);
+            size_ = std::exchange(other.size_, 0);
+            capacity_ = std::exchange(other.capacity_, 0);
         }
         return *this;
     }
@@ -144,7 +137,6 @@ public:
 
     // Обнуляет размер массива, не изменяя его вместимость
     void Clear() noexcept {
-        //std::fill(begin(), end(), Type());
         size_ = 0;
     }
 
@@ -153,9 +145,7 @@ public:
     void Resize(size_t new_size) {
         if (new_size <= capacity_) {
             if (new_size < size_) {
-                for (size_t i = new_size; i < size_; ++i) {
-                    items_[i].~Type();
-                }
+                std::destroy(items_ + new_size, items_ + size_);
             }
             else if (new_size > size_) {
                 for (size_t i = size_; i < new_size; ++i) {
@@ -237,10 +227,9 @@ public:
             return;
         }
         size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
+        //тут как и во втором методе я не использую резерв, т.к он это делает для текущего оъекта, а тут целенаправленно копия создается
         Type* copy_items = new Type[new_capacity];
-        for (size_t i = 0; i < size_; ++i) {
-            copy_items[i] = items_[i];
-        }
+        std::copy(items_, items_ + size_, copy_items);
         copy_items[size_] = elem;
         delete[] items_;
         items_ = copy_items;
@@ -265,13 +254,13 @@ public:
     }
 
     void PopBack() noexcept {
-        if (size_ > 0) {
-            --size_;
-            items_[size_].~Type();
-        }
+        assert (size_ > 0);
+        --size_;
+        items_[size_].~Type();
     }
 
     Iterator Insert(ConstIterator pos, const Type& value) {
+        assert(begin() <= pos || pos <= end());
         size_t pos_index = pos - begin();
         if (size_ == capacity_) {
             size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
@@ -292,6 +281,7 @@ public:
     }
 
     Iterator Insert(ConstIterator pos, Type&& value){
+        assert(begin() <= pos || pos <= end());
         size_t pos_index = pos - begin();
         if(size_ == capacity_){
             size_t new_capacity = (capacity_ == 0) ? 1 : capacity_ * 2;
@@ -311,8 +301,8 @@ public:
         return items_ + pos_index;
     }
 
-
     Iterator Erase(ConstIterator pos) {
+        assert(begin() <= pos || pos <= end());
         size_t pos_erase = pos - begin();
         std::move(items_ + pos_erase + 1, items_ + size_, items_ + pos_erase);
         --size_;
