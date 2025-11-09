@@ -28,11 +28,10 @@ public:
     }
 
     SimpleVector(const SimpleVector& other) : capacity_(other.capacity_), size_(other.size_) {
-        capacity_ = other.capacity_;
-        size_ = other.size_;
         items_ = new Type[size_];
         std::copy(other.begin(), other.end(), items_);
     }
+
     SimpleVector(SimpleVector&& other) : items_(other.items_), size_(other.size_), capacity_(other.capacity_){
         other.items_ = nullptr;
         other.size_ = 0;
@@ -40,26 +39,23 @@ public:
     }
 
     // Создаёт вектор из size элементов, инициализированных значением по умолчанию
-    explicit SimpleVector(size_t size) {
-        items_ = (size == 0) ? nullptr : new Type[size];
-        std::fill(items_, items_ + size, Type());
-        size_ = size;
-        capacity_ = size;
+    explicit SimpleVector(size_t size) : size_(size) {
+        items_ = (size_ == 0) ? nullptr : new Type[size_];
+        std::fill(items_, items_ + size_, Type());
+        capacity_ = size_;
     }
 
     // Создаёт вектор из size элементов, инициализированных значением value
-    SimpleVector(size_t size, const Type& value) {
-        items_ = new Type[size];
-        std::fill(items_, items_ + size, value);
-        size_ = size;
-        capacity_ = size;
+    SimpleVector(size_t size, const Type& value) : size_(size) {
+        items_ = new Type[size_];
+        std::fill(items_, items_ + size_, value);
+        capacity_ = size_;
     }
 
     // Создаёт вектор из std::initializer_list
-    SimpleVector(std::initializer_list<Type> init) {
-        items_ = new Type[init.size()];
+    SimpleVector(std::initializer_list<Type> init) : size_(init.size()) {
+        items_ = new Type[size_];
         std::copy(init.begin(), init.end(), items_);
-        size_ = init.size();
         capacity_ = size_;
     }
 
@@ -70,9 +66,7 @@ public:
     SimpleVector& operator=(const SimpleVector& other) {
     if (this != &other) {
         if(other.IsEmpty()){
-            size_ = 0;
-            delete[] items_;
-            items_ = nullptr;
+            Clear();
             return *this;
         }
         SimpleVector temp(other); 
@@ -83,8 +77,10 @@ public:
 
     SimpleVector& operator=(SimpleVector&& other){
         if(this != &other){
-            delete[] items_;
-
+            if(other.IsEmpty()){
+                Clear();
+                return *this;
+            }
             items_ = std::exchange(other.items_, nullptr);
             size_ = std::exchange(other.size_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -233,7 +229,7 @@ public:
         copy_items[size_] = elem;
         delete[] items_;
         items_ = copy_items;
-        capacity_ *= 2;
+        capacity_ = new_capacity;
         ++size_;
     }
 
